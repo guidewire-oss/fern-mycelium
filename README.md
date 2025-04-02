@@ -72,6 +72,7 @@ fern-mycelium is designed to power AI agents that help developers and QA teams r
 | **QA Coach** *(future)* | Tracks test coverage quality trends, team-level reliability, and provides feedback loops for test effectiveness. |
 
 These agents will be accessible through APIs and optionally embedded into tools like GitHub Actions, CI/CD pipelines, or IDE extensions.
+
 ---
 
 ## 📊 Architecture (High Level)
