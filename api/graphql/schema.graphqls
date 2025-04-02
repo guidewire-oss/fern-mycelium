@@ -1,0 +1,18 @@
+type Query {
+  health: String!
+}
+
+extend type Query {
+  flakyTests(limit: Int!, projectID: ID!): [FlakyTest!]!
+}
+
+type FlakyTest {
+  testID: ID!
+  testName: String!
+  passRate: Float!
+  failureRate: Float!
+  lastFailure: String!
+  runCount: Int!
+}
+
+

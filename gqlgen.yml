@@ -1,0 +1,11 @@
+# gqlgen.yml
+schema:
+  - api/graphql/schema.graphqls
+exec:
+  filename: internal/gql/generated.go
+model:
+  filename: internal/gql/models.go
+resolver:
+  layout: follow-schema
+  dir: internal/gql/resolvers
+  package: resolvers
