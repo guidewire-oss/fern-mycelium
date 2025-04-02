@@ -125,7 +125,7 @@ We welcome ideas, feedback, and early contributors—whether you’re working wi
 
 ## 🌐 License
 
-MIT
+Apache 2.0
 
 ---
 
