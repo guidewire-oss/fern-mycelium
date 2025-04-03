@@ -31,18 +31,23 @@ func (f *FernMycelium) Build(
 	// +defaultPath="."
 	src *dagger.Directory,
 ) (*dagger.Container, error) {
-	log.Println("🔨 Building slim Alpine image...")
+	log.Println("🔨 Building slim Alpine image with counterfeiter support...")
 
+	// Set up the build environment and install dependencies
 	builder := dag.Container().
 		From("golang:1.24").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
 		WithExec([]string{"go", "mod", "tidy"}).
-		WithExec([]string{"go", "install", "github.com/maxbrunsfeld/counterfeiter/v6@latest"}).
-		WithEnvVariable("PATH", "/go/bin:$PATH").
+		WithExec([]string{"go", "install", "github.com/maxbrunsfeld/counterfeiter/v6@latest"})
+
+	// Update the PATH to include /go/bin and preserve access to go in /usr/local/go/bin
+	builder = builder.
+		WithEnvVariable("PATH", "/go/bin:/usr/local/go/bin:$PATH").
 		WithExec([]string{"go", "generate", "./..."}).
 		WithExec([]string{"go", "build", "-o", "/app/fern-mycelium"})
 
+	// Package the built binary into a minimal Alpine image
 	runtime := dag.Container().
 		From("alpine:latest").
 		WithExec([]string{"apk", "--no-cache", "add", "ca-certificates"}).
