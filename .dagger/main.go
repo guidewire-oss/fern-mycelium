@@ -39,7 +39,8 @@ func (f *FernMycelium) Build(
 		WithWorkdir("/src").
 		WithExec([]string{"go", "mod", "tidy"}).
 		WithExec([]string{"go", "install", "github.com/maxbrunsfeld/counterfeiter/v6@latest"}).
-		WithExec([]string{"sh", "-c", "PATH=$PATH:/go/bin go generate ./..."}).
+		WithEnvVariable("PATH", "/go/bin:$PATH").
+		WithExec([]string{"go", "generate", "./..."}).
 		WithExec([]string{"go", "build", "-o", "/app/fern-mycelium"})
 
 	runtime := dag.Container().
