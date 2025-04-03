@@ -167,3 +167,36 @@ func (f *FernMycelium) CheckOpenSSF(
 	}
 	return output, nil
 }
+
+func (m *FernMycelium) Pipeline(
+	ctx context.Context,
+	src *dagger.Directory,
+) error {
+	var err error
+
+	// Step 1: Lint
+	_, err = m.Lint(ctx, src)
+	if err != nil {
+		return err
+	}
+
+	// Step 2: Test
+	_, err = m.Test(ctx, src)
+	if err != nil {
+		return err
+	}
+
+	// Step 3: Scan (with built image name)
+	_, err = m.Scan(ctx, src)
+	if err != nil {
+		return err
+	}
+
+	// Step 4: Publish the image
+	// _, err = m.Publish(ctx, src)
+	// if err != nil {
+	// 	return err
+	// }
+
+	return nil
+}
