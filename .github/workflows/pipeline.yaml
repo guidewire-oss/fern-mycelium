@@ -17,23 +17,21 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.24
-
-      - name: Install Dagger CLI
-        run: |
-          curl -L https://dl.dagger.io/dagger/install.sh | sh
-          echo "$HOME/.dagger/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.dagger/bin:$PATH"
-
       - name: Run full pipeline
-        run: make pipeline
+        uses: dagger/dagger-for-github@8.0.0
+        with:
+          version: "0.18.1"
+          cmds: |
+            make pipeline
 
       - name: Run OpenSSF Scorecard check
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for authenticated API access
+        uses: dagger/dagger-for-github@8.0.0
+        with:
+          version: "0.18.1"
+          cmds: |
+            make pipeline
         run: |
           dagger call check-open-ssf \
             --repo github.com/${{ github.repository }} \
