@@ -34,4 +34,3 @@ func init() {
 	rootCmd.PersistentFlags().StringP("config", "c", "", "Path to custom config file (optional)")
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable verbose debug logging")
 }
-
