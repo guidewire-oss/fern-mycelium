@@ -25,29 +25,34 @@ import (
 // FernMycelium defines the reusable Dagger pipeline components
 type FernMycelium struct{}
 
-// Build compiles the Go binary using a multi-stage build and returns a slim Alpine-based container
 func (f *FernMycelium) Build(
 	ctx context.Context,
 	// +defaultPath="."
 	src *dagger.Directory,
 ) (*dagger.Container, error) {
-	log.Println("🔨 Building slim Alpine image with counterfeiter support...")
+	log.Println("🔨 Building slim Alpine image with counterfeiter")
 
-	// Set up the build environment
 	builder := dag.Container().
 		From("golang:1.24").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
 		WithExec([]string{"go", "mod", "tidy"}).
-		WithExec([]string{"go", "install", "github.com/maxbrunsfeld/counterfeiter/v6@latest"})
-
-	// Ensure counterfeiter is available to go generate by symlinking it into /usr/local/bin
-	builder = builder.
-		WithExec([]string{"ln", "-s", "/go/bin/counterfeiter", "/usr/local/bin/counterfeiter"}).
-		WithExec([]string{"go", "generate", "./..."}).
+		WithExec([]string{"go", "install", "github.com/maxbrunsfeld/counterfeiter/v6@latest"}).
+		WithEnvVariable("PATH", "/go/bin:/usr/local/go/bin:$PATH").
+		WithExec([]string{
+			"counterfeiter",
+			"-generate",
+			"-o", "pkg/repo/fakes/fake_flaky_test_provider.go",
+			"github.com/guidewire-oss/fern-mycelium/pkg/repo.FlakyTestProvider",
+		}).
+		WithExec([]string{
+			"counterfeiter",
+			"-generate",
+			"-o", "pkg/repo/fakes/fake_pgx_querier.go",
+			"github.com/guidewire-oss/fern-mycelium/pkg/repo.PgxQuerier",
+		}).
 		WithExec([]string{"go", "build", "-o", "/app/fern-mycelium"})
 
-	// Package the binary in a minimal Alpine image
 	runtime := dag.Container().
 		From("alpine:latest").
 		WithExec([]string{"apk", "--no-cache", "add", "ca-certificates"}).
