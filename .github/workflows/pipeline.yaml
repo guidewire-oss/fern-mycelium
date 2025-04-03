@@ -32,8 +32,8 @@ jobs:
           call: check-open-ssf --src .
 
       - name: Publish (optional, only on main)
+        uses: dagger/dagger-for-github@8.0.0
         if: github.ref == 'refs/heads/main'
         with:
           version: "0.18.1"
           call: publish --src .
-
