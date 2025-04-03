@@ -48,7 +48,7 @@ publish: ## Publish container to ttl.sh
 	dagger call publish --src .
 
 .PHONY: pipeline
-pipeline: tidy fmt generate lint test build scan publish ## Run full pipeline with Dagger
+pipeline: tidy fmt lint test build scan publish ## Run full pipeline with Dagger
 ## pipeline: tidy fmt generate lint test build scan scorecard publish ## Run full pipeline with Dagger
 	@echo ✅ All stages complete.
 
