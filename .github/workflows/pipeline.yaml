@@ -26,6 +26,7 @@ jobs:
         run: |
           curl -L https://dl.dagger.io/dagger/install.sh | sh
           echo "$HOME/.dagger/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.dagger/bin:$PATH"
 
       - name: Run full pipeline
         run: make pipeline
