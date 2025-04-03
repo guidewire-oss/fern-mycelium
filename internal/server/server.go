@@ -6,11 +6,13 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gin-gonic/gin"
+	"github.com/guidewire-oss/fern-mycelium/internal/db"
 	"github.com/guidewire-oss/fern-mycelium/internal/gql"
 	"github.com/guidewire-oss/fern-mycelium/internal/gql/resolvers"
 )
 
 func Start() {
+	db.Connect()
 	router := gin.Default()
 
 	// Health check
@@ -24,7 +26,7 @@ func Start() {
 	// GraphQL schema
 	schema := gql.NewExecutableSchema(gql.Config{Resolvers: &resolvers.Resolver{}})
 	router.GET("/graphql", gin.WrapH(playground.Handler("Mycel GraphQL Playground", "/query")))
-	router.POST("/query", gin.WrapH(handler.NewDefaultServer(schema)))
+	router.POST("/query", gin.WrapH(handler.New(schema)))
 
 	log.Println("🚀 GraphQL Playground available at http://localhost:8080/graphql")
 	log.Println("✅ Health check available at http://localhost:8080/healthz")

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-  "github.com/guidewire-oss/fern-mycelium/internal/server"
+	"github.com/guidewire-oss/fern-mycelium/internal/server"
 	"github.com/spf13/cobra"
 )
 
@@ -19,4 +19,3 @@ var serveCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(serveCmd)
 }
-

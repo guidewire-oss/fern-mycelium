@@ -18,19 +18,20 @@ func (r *queryResolver) Health(ctx context.Context) (string, error) {
 
 // FlakyTests is the resolver for the flakyTests field.
 func (r *queryResolver) FlakyTests(ctx context.Context, limit int, projectID string) ([]*gql.FlakyTest, error) {
-  mock := []*gql.FlakyTest{
-		{
-			TestID:      "auth-invalid-token",
-			TestName:    "LoginService handles expired tokens",
-			PassRate:    0.72,
-			FailureRate: 0.28,
-			LastFailure: "2025-03-30T18:44:10Z",
-			RunCount:    50,
-		},
-	}
+	// mock := []*gql.FlakyTest{
+	// 	{
+	// 		TestID:      "auth-invalid-token",
+	// 		TestName:    "LoginService handles expired tokens",
+	// 		PassRate:    0.72,
+	// 		FailureRate: 0.28,
+	// 		LastFailure: "2025-03-30T18:44:10Z",
+	// 		RunCount:    50,
+	// 	},
+	// }
 
+	return r.FlakyRepo.GetFlakyTests(ctx, projectID, limit)
 	// Eventually: fetch by projectID from DB
-	return mock, nil
+	// return mock, nil
 }
 
 // Query returns gql.QueryResolver implementation.
