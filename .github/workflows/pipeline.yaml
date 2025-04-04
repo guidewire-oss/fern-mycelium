@@ -20,6 +20,7 @@ jobs:
       - name: Run full pipeline
         uses: dagger/dagger-for-github@8.0.0
         with:
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
           version: "0.18.1"
           call: pipeline --src .
 
@@ -29,7 +30,7 @@ jobs:
         uses: dagger/dagger-for-github@8.0.0
         with:
           version: "0.18.1"
-          call: check-open-ssf --repo github.com/guidewire-oss/fern-mycelium --githubToken @env:GITHUB_TOKEN
+          call: check-open-ssf --repo=github.com/guidewire-oss/fern-mycelium --githubToken=env://GITHUB_TOKEN
 
       - name: Publish (optional, only on main)
         uses: dagger/dagger-for-github@8.0.0
