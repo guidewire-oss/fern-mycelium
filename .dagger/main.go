@@ -19,7 +19,6 @@ import (
 	"dagger/fern-mycelium/internal/dagger"
 	"fmt"
 	"log"
-	"time"
 )
 
 // FernMycelium defines the reusable Dagger pipeline components
@@ -86,26 +85,46 @@ func (f *FernMycelium) Scan(
 	return output, nil
 }
 
-// Publish pushes the built image to ttl.sh for temporary sharing
-func (f *FernMycelium) Publish(
+func (m *FernMycelium) Publish(
 	ctx context.Context,
-	// +defaultPath="."
 	src *dagger.Directory,
-) (string, error) {
-	container, err := f.Build(ctx, src)
+	version string,
+	githubToken dagger.Secret,
+) error {
+	container, err := m.Build(ctx, src)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	timestamp := time.Now().Unix()
-	tag := fmt.Sprintf("ttl.sh/fern-mycelium-%d:1h", timestamp)
-	ref, err := container.Publish(ctx, tag)
-	if err != nil {
-		return "", err
-	}
+	imageTag := fmt.Sprintf("ghcr.io/guidewire-oss/fern-mycelium:%s", version)
 
-	return fmt.Sprintf("✅ Published to %s", ref), nil
+	_, err = container.
+		WithRegistryAuth("ghcr.io", "guidewire-oss", &githubToken).
+		Publish(ctx, imageTag)
+
+	return err
 }
+
+// Publish pushes the built image to ttl.sh for temporary sharing
+// func (f *FernMycelium) Publish(
+// 	ctx context.Context,
+// 	// +defaultPath="."
+// 	src *dagger.Directory,
+// ) (string, error) {
+// 	container, err := f.Build(ctx, src)
+// 	if err != nil {
+// 		return "", err
+// 	}
+//
+// 	timestamp := time.Now().Unix()
+// 	tag := fmt.Sprintf("ttl.sh/fern-mycelium-%d:1h", timestamp)
+// 	ref, err := container.Publish(ctx, tag)
+// 	if err != nil {
+// 		return "", err
+// 	}
+
+// 	return fmt.Sprintf("✅ Published to %s", ref), nil
+// }
 
 // Test runs unit tests using Ginkgo
 func (f *FernMycelium) Test(
@@ -120,6 +139,28 @@ func (f *FernMycelium) Test(
 		WithWorkdir("/src").
 		WithExec([]string{"go", "install", "github.com/onsi/ginkgo/v2/ginkgo@latest"}).
 		WithExec([]string{"ginkgo", "-r", "-p", "--skip-package", "acceptance"}).
+		Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+	return output, nil
+}
+
+func (f *FernMycelium) Acceptance(
+	ctx context.Context,
+	// +defaultPath="."
+	src *dagger.Directory,
+) (string, error) {
+	log.Println("✅ Running Ginkgo tests...")
+
+	output, err := dag.Container().
+		From("golang:1.24").
+		WithMountedDirectory("/src", src).
+		WithWorkdir("/src").
+		WithServiceBinding("docker", dag.Docker().Cli().Engine()).
+		WithEnvVariable("DOCKER_HOST", "tcp://docker:2375").
+		WithExec([]string{"go", "install", "github.com/onsi/ginkgo/v2/ginkgo@latest"}).
+		WithExec([]string{"ginkgo", "-r", "--vv", "-p", "acceptance/"}).
 		Stdout(ctx)
 	if err != nil {
 		return "", err
@@ -199,4 +240,50 @@ func (m *FernMycelium) Pipeline(
 	// }
 
 	return nil
+}
+
+func (m *FernMycelium) SBOM(ctx context.Context, container *dagger.Container) (*dagger.File, error) {
+	syft := dag.Container().
+		From("anchore/syft:latest").
+		WithMountedDirectory("/input", container.Rootfs()).
+		WithWorkdir("/input").
+		WithExec([]string{"syft", ".", "-o", "spdx-json", "-q", "--file", "/sbom.json"})
+
+	return syft.File("/sbom.json"), nil
+}
+
+func (m *FernMycelium) Cosign(ctx context.Context, image string) error {
+	cosign := dag.Container().
+		From("gcr.io/projectsigstore/cosign:v2.2.3").
+		// WithMountedSecret("/cosign/creds", dag.EnvVariable("GITHUB_TOKEN")).
+		WithEnvVariable("COSIGN_EXPERIMENTAL", "1").
+		WithEnvVariable("GITHUB_TOKEN", "env://GITHUB_TOKEN").
+		WithExec([]string{"cosign", "sign", "--yes", image})
+
+	_, err := cosign.Sync(ctx)
+	return err
+}
+
+func (m *FernMycelium) Release(ctx context.Context, src *dagger.Directory, version string, githubToken dagger.Secret) error {
+	container, err := m.Build(ctx, src)
+	if err != nil {
+		return err
+	}
+
+	// if err := m.Publish(ctx, container, version, githubToken); err != nil {
+	// 	return err
+	// }
+
+	if err := m.Cosign(ctx, fmt.Sprintf("ghcr.io/guidewire-oss/fern-mycelium:%s", version)); err != nil {
+		return err
+	}
+
+	sbomFile, err := m.SBOM(ctx, container)
+	if err != nil {
+		return err
+	}
+
+	// Optionally export SBOM file to local or GitHub release asset
+	_, err = sbomFile.Export(ctx, "fern-mycelium-sbom.json")
+	return err
 }

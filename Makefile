@@ -35,6 +35,10 @@ build: ## Build the Go binary
 test: ## Run unit tests via Dagger
 	dagger call test --src .
 
+.PHONY: acceptance
+acceptance: ## Run acceptance tests via Dagger
+	dagger call acceptance --src .
+
 .PHONY: scan
 scan: ## Run Trivy filesystem scan on container
 	dagger call scan --src .

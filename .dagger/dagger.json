@@ -1,0 +1,17 @@
+{
+  "name": ".dagger",
+  "engineVersion": "v0.18.2",
+  "dependencies": [
+    {
+      "name": "docker",
+      "source": "github.com/shykes/daggerverse/docker@f82c283510bac0399451dff7ffbec0274bfc3bd4",
+      "pin": "f82c283510bac0399451dff7ffbec0274bfc3bd4"
+    }
+  ],
+  "clients": [
+    {
+      "generator": "go",
+      "directory": "dagger"
+    }
+  ]
+}

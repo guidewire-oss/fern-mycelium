@@ -28,20 +28,18 @@ func NewFlakyTestRepo(db PgxQuerier) *FlakyTestRepo {
 
 func (r *FlakyTestRepo) GetFlakyTests(ctx context.Context, projectID string, limit int) ([]*gql.FlakyTest, error) {
 	query := `
-		SELECT
-			spec_runs.name AS test_name,
-			spec_runs.file_name AS test_id,
-			COUNT(*) AS total_runs,
-			COUNT(*) FILTER (WHERE spec_runs.status != 'passed') AS failure_count,
-			MAX(suite_runs.start_time) FILTER (WHERE spec_runs.status != 'passed') AS last_failure
-		FROM spec_runs
-		JOIN suite_runs ON spec_runs.suite_run_id = suite_runs.id
-		WHERE suite_runs.project_id = $1
-		GROUP BY spec_runs.name, spec_runs.file_name
-		ORDER BY failure_count::float / COUNT(*) DESC
-		LIMIT $2;
+    SELECT
+        spec_runs.spec_description AS test_name,
+        COUNT(*) AS total_runs,
+        COUNT(*) FILTER (WHERE spec_runs.status != 'passed') AS failure_count,
+        MAX(spec_runs.end_time) FILTER (WHERE spec_runs.status != 'passed') AS last_failure
+    FROM spec_runs
+    JOIN suite_runs ON spec_runs.suite_id = suite_runs.id
+    WHERE suite_runs.suite_name = $1
+    GROUP BY spec_runs.spec_description
+    ORDER BY (COUNT(*) FILTER (WHERE spec_runs.status != 'passed'))::float / COUNT(*) DESC
+    LIMIT $2;
 	`
-
 	rows, err := r.db.Query(ctx, query, projectID, limit)
 	if err != nil {
 		return nil, err
@@ -51,16 +49,15 @@ func (r *FlakyTestRepo) GetFlakyTests(ctx context.Context, projectID string, lim
 	var results []*gql.FlakyTest
 
 	for rows.Next() {
-		var testName, testID string
+		var testName string
 		var runCount, failureCount int
 		var lastFailure time.Time
 
-		if err := rows.Scan(&testName, &testID, &runCount, &failureCount, &lastFailure); err != nil {
+		if err := rows.Scan(&testName, &runCount, &failureCount, &lastFailure); err != nil {
 			return nil, err
 		}
 
 		results = append(results, &gql.FlakyTest{
-			TestID:      testID,
 			TestName:    testName,
 			PassRate:    float64(runCount-failureCount) / float64(runCount),
 			FailureRate: float64(failureCount) / float64(runCount),
