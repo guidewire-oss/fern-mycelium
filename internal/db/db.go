@@ -11,7 +11,7 @@ import (
 
 var DB *pgxpool.Pool
 
-func Connect() {
+func Connect() (*pgxpool.Pool, error) {
 	url := os.Getenv("DB_URL")
 	if url == "" {
 		log.Fatal("❌ DB_URL not set in environment")
@@ -24,7 +24,9 @@ func Connect() {
 	DB, err = pgxpool.New(ctx, url)
 	if err != nil {
 		log.Fatalf("❌ Failed to connect to database: %v", err)
+		return nil, err
 	}
 
 	log.Println("✅ Connected to fern-reporter database")
+	return DB, nil
 }
