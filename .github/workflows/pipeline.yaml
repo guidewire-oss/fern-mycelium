@@ -21,7 +21,7 @@ jobs:
         uses: dagger/dagger-for-github@8.0.0
         with:
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
-          version: "0.18.1"
+          version: "0.18.2"
           call: pipeline --src .
 
       - name: Run OpenSSF Scorecard check
@@ -29,14 +29,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for authenticated API access
         uses: dagger/dagger-for-github@8.0.0
         with:
-          version: "0.18.1"
+          version: "0.18.2"
           call: check-open-ssf --repo=github.com/guidewire-oss/fern-mycelium --githubToken=env://GITHUB_TOKEN
 
       - name: Publish (optional, only on main)
         uses: dagger/dagger-for-github@8.0.0
         if: github.ref == 'refs/heads/main'
         with:
-          version: "0.18.1"
+          version: "0.18.2"
           call: publish --src .
   release:
     name: Release to GHCR + Cosign + SBOM
@@ -45,7 +45,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write  # Required for keyless cosign signing with OIDC
+      id-token: write # Required for keyless cosign signing with OIDC
 
     env:
       DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN }}
@@ -57,7 +57,7 @@ jobs:
       - name: Run secure release
         uses: dagger/dagger-for-github@8.0.0
         with:
-          version: "0.18.1"
+          version: "0.18.2"
           call: release
           args: |
             --src .
