@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"os"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2" //nolint:all
+	. "github.com/onsi/gomega"    //nolint:all
 )
 
 var _ = Describe("FlakyTests Query", func() {
@@ -34,7 +34,7 @@ var _ = Describe("FlakyTests Query", func() {
 
 		resp, err := http.Post(serverURL(), "application/json", bytes.NewBuffer(reqBody))
 		Expect(err).ToNot(HaveOccurred())
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:all
 
 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
 

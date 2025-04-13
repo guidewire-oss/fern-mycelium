@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/guidewire-oss/fern-mycelium/internal/db"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2" //nolint:all
+	. "github.com/onsi/gomega"    //nolint:all
 )
 
 func TestDB(t *testing.T) {
@@ -20,6 +20,6 @@ var _ = Describe("Database Connection", func() {
 		if err := os.Setenv("DB_URL", "postgres://user:pass@localhost:5432/fern?sslmode=disable"); err != nil {
 			log.Fatalf("Failed to set DB_URL: %v", err)
 		}
-		Expect(func() { db.Connect() }).ToNot(Panic())
+		Expect(func() { db.Connect() }).ToNot(Panic()) //nolint:all
 	})
 })

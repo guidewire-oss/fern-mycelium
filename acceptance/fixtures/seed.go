@@ -18,7 +18,7 @@ func LoadSchema(ctx context.Context, dsn string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open db: %w", err)
 	}
-	defer db.Close()
+	defer db.Close() //nolint:all
 
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
@@ -60,7 +60,7 @@ func SeedFlakyTests(ctx context.Context, dsn string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open db: %w", err)
 	}
-	defer db.Close()
+	defer db.Close() //nolint:all
 
 	statements := []string{
 		`INSERT INTO test_runs (id,  start_time, end_time, git_branch, git_sha, build_trigger_actor, build_url, test_seed)

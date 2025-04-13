@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/gin-gonic/gin"
 	"github.com/guidewire-oss/fern-mycelium/acceptance/fixtures"
 	"github.com/guidewire-oss/fern-mycelium/internal/gql"
 	"github.com/guidewire-oss/fern-mycelium/internal/gql/resolvers"
+	"github.com/guidewire-oss/fern-mycelium/internal/server"
 	"github.com/guidewire-oss/fern-mycelium/pkg/repo"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // registers the "pgx" driver with database/sql
@@ -52,7 +52,7 @@ var _ = BeforeSuite(func() {
 
 	dsn := fmt.Sprintf("postgres://user:pass@%s:%s/fern?sslmode=disable", host, port.Port())
 	fmt.Println("✅ Test DB DSN:", dsn)
-	os.Setenv("DB_URL", dsn)
+	os.Setenv("DB_URL", dsn) //nolint:all
 
 	dbpool, err := pgxpool.New(ctx, dsn)
 	Expect(err).ToNot(HaveOccurred())
@@ -63,7 +63,7 @@ var _ = BeforeSuite(func() {
 
 	repo := repo.NewFlakyTestRepo(dbpool)
 	schema := gql.NewExecutableSchema(gql.Config{Resolvers: &resolvers.Resolver{FlakyRepo: repo}})
-	handler := handler.NewDefaultServer(schema)
+	handler := server.NewGraphQLServer(schema)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
