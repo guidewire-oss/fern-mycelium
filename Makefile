@@ -51,6 +51,11 @@ scorecard: ## Run OpenSSF Scorecard
 publish: ## Publish container to ttl.sh
 	dagger call publish --src .
 
+.PHONY: deploy
+deploy: ## Deploy to k3d cluster
+	@echo ✅ Deploying to k3d...
+	dagger call deploy --src .
+
 .PHONY: pipeline
 pipeline: tidy fmt lint test build scan publish ## Run full pipeline with Dagger
 ## pipeline: tidy fmt generate lint test build scan scorecard publish ## Run full pipeline with Dagger

@@ -45,7 +45,7 @@ func Start() {
 	})
 
 	// GraphQL endpoints
-	router.GET("/graphql", gin.WrapH(playground.Handler("Mycel GraphQL Playground", "/query")))
+	router.GET("/graphql", gin.WrapH(playground.Handler("Mycelium GraphQL Playground", "/query")))
 	router.POST("/query", gin.WrapH(NewGraphQLServer(schema)))
 
 	log.Println("🚀 GraphQL Playground available at http://localhost:8080/graphql")

@@ -287,3 +287,81 @@ func (m *FernMycelium) Release(ctx context.Context, src *dagger.Directory, versi
 	_, err = sbomFile.Export(ctx, "fern-mycelium-sbom.json")
 	return err
 }
+
+// Deploy deploys the application to k3d cluster
+func (m *FernMycelium) Deploy(
+	ctx context.Context,
+	// +defaultPath="."
+	src *dagger.Directory,
+) (string, error) {
+	log.Println("🚀 Deploying to k3d cluster...")
+
+	// Build the container first
+	container, err := m.Build(ctx, src)
+	if err != nil {
+		return "", fmt.Errorf("failed to build container: %w", err)
+	}
+
+	// Load the image into k3d
+	imageRef := "fern-mycelium:latest"
+	_, err = container.Publish(ctx, imageRef)
+	if err != nil {
+		return "", fmt.Errorf("failed to publish image: %w", err)
+	}
+
+	// Apply Kubernetes manifests
+	output, err := dag.Container().
+		From("alpine/k8s:1.28.4").
+		WithMountedDirectory("/manifests", src.Directory("k8s")).
+		WithExec([]string{"kubectl", "apply", "-f", "/manifests/"}).
+		Stdout(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to apply manifests: %w", err)
+	}
+
+	return fmt.Sprintf("✅ Deployed successfully:\n%s", output), nil
+}
+
+// A coding agent for developing new features
+func (m *FernMycelium) Develop(
+	ctx context.Context,
+	// Assignment to complete
+	assignment string,
+	// +defaultPath="/"
+	source *dagger.Directory,
+) (*dagger.Directory, error) {
+	// Environment with agent inputs and outputs
+	environment := dag.Env(dagger.EnvOpts{Privileged: true}).
+		WithStringInput("assignment", assignment, "the assignment to complete").
+		WithWorkspaceInput(
+			"workspace",
+			dag.Workspace(source),
+			"the workspace with tools to edit code").
+		WithWorkspaceOutput(
+			"completed",
+			"the workspace with the completed assignment")
+
+	// Detailed prompt stored in markdown file
+	promptFile := dag.CurrentModule().Source().File("develop_prompt.md")
+
+	// Put it all together to form the agent
+	work := dag.LLM().
+		WithEnv(environment).
+		WithPromptFile(promptFile)
+
+	// Get the output from the agent
+	completed := work.
+		Env().
+		Output("completed").
+		AsWorkspace()
+	completedDirectory := completed.GetSource().WithoutDirectory("node_modules")
+
+	// Make sure the tests really pass
+	_, err := m.Test(ctx, completedDirectory)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return the Directory with the assignment completed
+	return completedDirectory, nil
+}
