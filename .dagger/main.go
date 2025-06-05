@@ -32,7 +32,7 @@ func (f *FernMycelium) Build(
 	log.Println("🔨 Building slim Alpine image with counterfeiter")
 
 	builder := dag.Container().
-		From("golang:1.24").
+		From("golang:1.24.3").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
 		WithExec([]string{"go", "mod", "tidy"}).
@@ -134,7 +134,7 @@ func (f *FernMycelium) Test(
 ) (string, error) {
 	log.Println("✅ Running Ginkgo tests...")
 	output, err := dag.Container().
-		From("golang:1.24").
+		From("golang:1.24.3").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
 		WithExec([]string{"go", "install", "github.com/onsi/ginkgo/v2/ginkgo@latest"}).
@@ -154,7 +154,7 @@ func (f *FernMycelium) Acceptance(
 	log.Println("✅ Running Ginkgo tests...")
 
 	output, err := dag.Container().
-		From("golang:1.24").
+		From("golang:1.24.3").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
 		WithServiceBinding("docker", dag.Docker().Cli().Engine()).
@@ -198,7 +198,7 @@ func (f *FernMycelium) CheckOpenSSF(
 	log.Println("🛡 Running OpenSSF Scorecard with GitHub token...")
 
 	output, err := dag.Container().
-		From("golang:1.24").
+		From("golang:1.24.3").
 		WithSecretVariable("GITHUB_AUTH_TOKEN", githubToken).
 		WithExec([]string{"go", "install", "github.com/ossf/scorecard/v4@latest"}).
 		WithExec([]string{"scorecard", fmt.Sprintf("--repo=%s", repo)}).
