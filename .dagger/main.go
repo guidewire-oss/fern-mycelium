@@ -288,13 +288,13 @@ func (m *FernMycelium) Release(ctx context.Context, src *dagger.Directory, versi
 	return err
 }
 
-// Deploy deploys the application to k3d cluster
+// Deploy deploys the application to k3d cluster using KubeVela
 func (m *FernMycelium) Deploy(
 	ctx context.Context,
 	// +defaultPath="."
 	src *dagger.Directory,
 ) (string, error) {
-	log.Println("🚀 Deploying to k3d cluster...")
+	log.Println("🚀 Deploying to k3d cluster using KubeVela...")
 
 	// Build the container first
 	container, err := m.Build(ctx, src)
@@ -309,17 +309,22 @@ func (m *FernMycelium) Deploy(
 		return "", fmt.Errorf("failed to publish image: %w", err)
 	}
 
-	// Apply Kubernetes manifests
+	// Apply KubeVela component definitions and application
 	output, err := dag.Container().
-		From("alpine/k8s:1.28.4").
-		WithMountedDirectory("/manifests", src.Directory("k8s")).
-		WithExec([]string{"kubectl", "apply", "-f", "/manifests/"}).
+		From("oamdev/vela-cli:latest").
+		WithMountedDirectory("/manifests", src.Directory("docs/kubevela")).
+		WithWorkdir("/manifests").
+		WithExec([]string{"kubectl", "create", "namespace", "fern", "--dry-run=client", "-o", "yaml"}).
+		WithExec([]string{"kubectl", "apply", "-f", "-"}).
+		WithExec([]string{"vela", "def", "apply", "cnpg.cue"}).
+		WithExec([]string{"vela", "def", "apply", "gateway.cue"}).
+		WithExec([]string{"kubectl", "apply", "-f", "vela.yaml"}).
 		Stdout(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to apply manifests: %w", err)
+		return "", fmt.Errorf("failed to apply KubeVela manifests: %w", err)
 	}
 
-	return fmt.Sprintf("✅ Deployed successfully:\n%s", output), nil
+	return fmt.Sprintf("✅ Deployed successfully using KubeVela:\n%s", output), nil
 }
 
 // A coding agent for developing new features

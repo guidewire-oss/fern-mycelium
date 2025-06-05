@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: fern-mycelium-config
-  namespace: fern-mycelium
-data:
-  # Add non-sensitive configuration here
-  LOG_LEVEL: "info"
-  PORT: "8080"

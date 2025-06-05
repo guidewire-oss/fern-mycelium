@@ -11,7 +11,7 @@ type FlakyTest {
   testName: String!
   passRate: Float!
   failureRate: Float!
-  lastFailure: String!
+  lastFailure: String
   runCount: Int!
 }
 

@@ -7,7 +7,7 @@ type FlakyTest struct {
 	TestName    string  `json:"testName"`
 	PassRate    float64 `json:"passRate"`
 	FailureRate float64 `json:"failureRate"`
-	LastFailure string  `json:"lastFailure"`
+	LastFailure *string `json:"lastFailure,omitempty"`
 	RunCount    int     `json:"runCount"`
 }
 
