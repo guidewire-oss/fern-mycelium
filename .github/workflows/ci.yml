@@ -25,6 +25,13 @@ jobs:
         curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh
         dagger version
 
+    - name: Clean old Dagger engines
+      run: |
+        # Stop and remove any existing Dagger engine containers
+        docker ps -a --filter "name=dagger-engine" --format "{{.Names}}" | xargs -r docker rm -f || true
+        # Remove any old engine images to force fresh pull
+        docker images --filter "reference=registry.dagger.io/engine" --format "{{.Repository}}:{{.Tag}}" | xargs -r docker rmi -f || true
+
     - name: Run Dagger pipeline
       run: |
         dagger call pipeline
@@ -38,6 +45,11 @@ jobs:
     - name: Install Dagger
       run: |
         curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh
+
+    - name: Clean old Dagger engines
+      run: |
+        docker ps -a --filter "name=dagger-engine" --format "{{.Names}}" | xargs -r docker rm -f || true
+        docker images --filter "reference=registry.dagger.io/engine" --format "{{.Repository}}:{{.Tag}}" | xargs -r docker rmi -f || true
 
     - name: Run security scan
       run: |
@@ -59,6 +71,11 @@ jobs:
     - name: Install Dagger
       run: |
         curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh
+
+    - name: Clean old Dagger engines
+      run: |
+        docker ps -a --filter "name=dagger-engine" --format "{{.Names}}" | xargs -r docker rm -f || true
+        docker images --filter "reference=registry.dagger.io/engine" --format "{{.Repository}}:{{.Tag}}" | xargs -r docker rmi -f || true
 
     - name: Build and publish
       env:
