@@ -29,12 +29,18 @@ func (f *FernMycelium) Build(
 	// +defaultPath="."
 	src *dagger.Directory,
 ) (*dagger.Container, error) {
-	log.Println("🔨 Building slim Alpine image with counterfeiter")
+	log.Println("🔨 Building slim Alpine image with counterfeiter (with caching)")
 
 	builder := dag.Container().
 		From("golang:1.24.3").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
+		// Add Go module cache for faster dependency resolution
+		WithMountedCache("/go/pkg/mod", dag.CacheVolume("go-mod-cache")).
+		// Add Go build cache for faster compilation
+		WithMountedCache("/root/.cache/go-build", dag.CacheVolume("go-build-cache")).
+		// Add cache for tool binaries
+		WithMountedCache("/go/bin", dag.CacheVolume("go-bin-cache")).
 		WithExec([]string{"go", "mod", "tidy"}).
 		WithExec([]string{"go", "install", "github.com/maxbrunsfeld/counterfeiter/v6@latest"}).
 		WithEnvVariable("PATH", "/go/bin:/usr/local/go/bin:$PATH").
@@ -67,7 +73,7 @@ func (f *FernMycelium) Scan(
 	// +defaultPath="."
 	src *dagger.Directory,
 ) (string, error) {
-	log.Println("🔍 Running Trivy filesystem scan on built container...")
+	log.Println("🔍 Running Trivy filesystem scan on built container (with caching)...")
 	container, err := f.Build(ctx, src)
 	if err != nil {
 		return "", err
@@ -76,6 +82,8 @@ func (f *FernMycelium) Scan(
 	output, err := dag.Container().
 		From("aquasec/trivy:0.58.1").
 		WithMountedDirectory("/scan", container.Rootfs()).
+		// Add cache for Trivy vulnerability database
+		WithMountedCache("/root/.cache/trivy", dag.CacheVolume("trivy-db-cache")).
 		WithExec([]string{"trivy", "fs", "--exit-code", "1", "--severity", "CRITICAL,HIGH", "/scan"}).
 		Stdout(ctx)
 	if err != nil {
@@ -132,11 +140,17 @@ func (f *FernMycelium) Test(
 	// +defaultPath="."
 	src *dagger.Directory,
 ) (string, error) {
-	log.Println("✅ Running Ginkgo tests...")
+	log.Println("✅ Running Ginkgo tests (with caching)...")
 	output, err := dag.Container().
 		From("golang:1.24.3").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
+		// Add Go module cache for faster dependency resolution
+		WithMountedCache("/go/pkg/mod", dag.CacheVolume("go-mod-cache")).
+		// Add Go build cache for faster test compilation
+		WithMountedCache("/root/.cache/go-build", dag.CacheVolume("go-build-cache")).
+		// Add cache for tool binaries (ginkgo)
+		WithMountedCache("/go/bin", dag.CacheVolume("go-bin-cache")).
 		WithExec([]string{"go", "install", "github.com/onsi/ginkgo/v2/ginkgo@latest"}).
 		WithExec([]string{"ginkgo", "-r", "-p", "--skip-package", "acceptance"}).
 		Stdout(ctx)
@@ -151,12 +165,18 @@ func (f *FernMycelium) Acceptance(
 	// +defaultPath="."
 	src *dagger.Directory,
 ) (string, error) {
-	log.Println("✅ Running Ginkgo tests...")
+	log.Println("✅ Running Ginkgo acceptance tests (with caching)...")
 
 	output, err := dag.Container().
 		From("golang:1.24.3").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
+		// Add Go module cache for faster dependency resolution
+		WithMountedCache("/go/pkg/mod", dag.CacheVolume("go-mod-cache")).
+		// Add Go build cache for faster test compilation
+		WithMountedCache("/root/.cache/go-build", dag.CacheVolume("go-build-cache")).
+		// Add cache for tool binaries (ginkgo)
+		WithMountedCache("/go/bin", dag.CacheVolume("go-bin-cache")).
 		WithServiceBinding("docker", dag.Docker().Cli().Engine()).
 		WithEnvVariable("DOCKER_HOST", "tcp://docker:2375").
 		WithExec([]string{"go", "install", "github.com/onsi/ginkgo/v2/ginkgo@latest"}).
@@ -174,11 +194,15 @@ func (f *FernMycelium) Lint(
 	// +defaultPath="."
 	src *dagger.Directory,
 ) (string, error) {
-	log.Println("🧼 Linting with golangci-lint...")
+	log.Println("🧼 Linting with golangci-lint (with caching)...")
 	output, err := dag.Container().
 		From("golangci/golangci-lint:v2.1.6").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
+		// Add Go module cache for faster dependency resolution
+		WithMountedCache("/go/pkg/mod", dag.CacheVolume("go-mod-cache")).
+		// Add golangci-lint cache for faster analysis
+		WithMountedCache("/root/.cache/golangci-lint", dag.CacheVolume("golangci-lint-cache")).
 		WithExec([]string{"golangci-lint", "run", "--timeout=3m"}).
 		Stdout(ctx)
 	if err != nil {
@@ -195,11 +219,15 @@ func (f *FernMycelium) CheckOpenSSF(
 	// +secret
 	githubToken *dagger.Secret,
 ) (string, error) {
-	log.Println("🛡 Running OpenSSF Scorecard with GitHub token...")
+	log.Println("🛡 Running OpenSSF Scorecard with GitHub token (with caching)...")
 
 	output, err := dag.Container().
 		From("golang:1.24.3").
 		WithSecretVariable("GITHUB_AUTH_TOKEN", githubToken).
+		// Add Go module cache for faster tool installation
+		WithMountedCache("/go/pkg/mod", dag.CacheVolume("go-mod-cache")).
+		// Add cache for tool binaries (scorecard)
+		WithMountedCache("/go/bin", dag.CacheVolume("go-bin-cache")).
 		WithExec([]string{"go", "install", "github.com/ossf/scorecard/v4@latest"}).
 		WithExec([]string{"scorecard", fmt.Sprintf("--repo=%s", repo)}).
 		Stdout(ctx)
