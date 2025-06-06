@@ -10,9 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     env:
       DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+      # Only publish on upstream repository to prevent permission issues on forks
+      IS_UPSTREAM: ${{ github.repository == 'guidewire-oss/fern-mycelium' }}
+      IS_MAIN_OR_TAG: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -61,22 +63,26 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Debug - Publishing start
-        if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) && github.repository == 'guidewire-oss/fern-mycelium'
+        if: env.IS_MAIN_OR_TAG == 'true' && env.IS_UPSTREAM == 'true'
         run: |
           echo "🚀 Starting publish step..."
           echo "📦 Version: ${{ steps.vars.outputs.VERSION }}"
 
       - name: Publish (optional, only on main)
+        # Grant packages:write permission only for this specific step
+        permissions:
+          contents: read
+          packages: write
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for authenticated API access
         uses: dagger/dagger-for-github@8.0.0
-        if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) && github.repository == 'guidewire-oss/fern-mycelium'
+        if: env.IS_MAIN_OR_TAG == 'true' && env.IS_UPSTREAM == 'true'
         with:
           version: "0.18.9"
           call: publish --src . --version=${{ steps.vars.outputs.VERSION }} --github-token=env://GITHUB_TOKEN
 
       - name: Debug - Publish completed
-        if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) && github.repository == 'guidewire-oss/fern-mycelium'
+        if: env.IS_MAIN_OR_TAG == 'true' && env.IS_UPSTREAM == 'true'
         run: echo "✅ Publish completed successfully"
 
   release:
