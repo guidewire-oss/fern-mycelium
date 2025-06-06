@@ -9,11 +9,18 @@ on:
 env:
   DAGGER_VERSION: "0.18.9"
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Set up Go
       uses: actions/setup-go@v5
@@ -34,13 +41,17 @@ jobs:
 
     - name: Run Dagger pipeline
       run: |
-        dagger call pipeline
+        dagger call pipeline --src .
 
   security:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Install Dagger
       run: |
@@ -53,7 +64,7 @@ jobs:
 
     - name: Run security scan
       run: |
-        dagger call scan
+        dagger call scan --src .
 
     - name: Run OpenSSF Scorecard
       env:
@@ -65,8 +76,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [test, security]
+    permissions:
+      contents: read
+      packages: write
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Install Dagger
       run: |

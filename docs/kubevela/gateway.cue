@@ -15,7 +15,6 @@ template: {
 		class:       *"traefik" | string
 		secretName?: string
 		secretNamespace?: string
-		listenerPort: *80 | int
 		annotations?: [string]: string
 		labels?: [string]: string
 	}

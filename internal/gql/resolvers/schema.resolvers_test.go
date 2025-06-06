@@ -37,7 +37,7 @@ var _ = Describe("FlakyTests Resolver", func() {
 				TestName:    "Login should timeout on invalid credentials",
 				PassRate:    0.7,
 				FailureRate: 0.3,
-				LastFailure: "2025-04-01T18:00:00Z",
+				LastFailure: func() *string { s := "2025-04-01T18:00:00Z"; return &s }(),
 				RunCount:    42,
 			},
 		}

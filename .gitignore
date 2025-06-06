@@ -24,3 +24,6 @@ go.work.sum
 # env file
 .env
 .tool-versions
+
+# Claude Code settings
+.claude/

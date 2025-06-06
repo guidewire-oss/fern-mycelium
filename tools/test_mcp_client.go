@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 )
 
 // GraphQL request and response structures
@@ -21,8 +22,8 @@ type GraphQLResponse struct {
 }
 
 type GraphQLError struct {
-	Message string   `json:"message"`
-	Path    []string `json:"path,omitempty"`
+	Message string        `json:"message"`
+	Path    []interface{} `json:"path,omitempty"`
 }
 
 type HealthResponse struct {
@@ -70,12 +71,13 @@ func main() {
 }
 
 func testHealthCheck() bool {
-	resp, err := http.Get(baseURL + "/healthz")
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(baseURL + "/healthz")
 	if err != nil {
 		fmt.Printf("❌ Health check error: %v\n", err)
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("❌ Health check failed: %d\n", resp.StatusCode)
@@ -110,7 +112,7 @@ func testFlakyTestQuery() ([]FlakyTest, bool) {
 		return nil, false
 	}
 
-	if result.Errors != nil && len(result.Errors) > 0 {
+	if len(result.Errors) > 0 {
 		fmt.Printf("❌ GraphQL errors: %v\n", result.Errors)
 		return nil, false
 	}
@@ -212,11 +214,12 @@ func executeGraphQLQuery(query string, variables map[string]interface{}) (*Graph
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	resp, err := http.Post(baseURL+"/query", "application/json", bytes.NewBuffer(jsonData))
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Post(baseURL+"/query", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

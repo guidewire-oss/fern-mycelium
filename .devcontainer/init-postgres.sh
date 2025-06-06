@@ -26,8 +26,16 @@ done
 # 4) Create 'fern' user & DB if missing
 echo "Creating fern user & database if needed..."
 psql -v ON_ERROR_STOP=1 --username postgres <<-EOSQL
-  CREATE USER IF NOT EXISTS fern WITH PASSWORD 'fern';
-  CREATE DATABASE IF NOT EXISTS fern OWNER fern;
+  DO \$\$
+  BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'fern') THEN
+      CREATE ROLE fern WITH LOGIN PASSWORD 'fern';
+    END IF;
+  END
+  \$\$;
+  
+  SELECT 'CREATE DATABASE fern OWNER fern'
+  WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'fern')\gexec
 EOSQL
 
 # 5) Apply migrations

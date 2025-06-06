@@ -53,7 +53,7 @@ func (f *FernMycelium) Build(
 		WithExec([]string{"go", "build", "-o", "/app/fern-mycelium"})
 
 	runtime := dag.Container().
-		From("alpine:latest").
+		From("alpine:3.20").
 		WithExec([]string{"apk", "--no-cache", "add", "ca-certificates"}).
 		WithFile("/fern-mycelium", builder.File("/app/fern-mycelium")).
 		WithEntrypoint([]string{"/fern-mycelium"})
@@ -74,7 +74,7 @@ func (f *FernMycelium) Scan(
 	}
 
 	output, err := dag.Container().
-		From("aquasec/trivy:latest").
+		From("aquasec/trivy:0.58.1").
 		WithMountedDirectory("/scan", container.Rootfs()).
 		WithExec([]string{"trivy", "fs", "--exit-code", "1", "--severity", "CRITICAL,HIGH", "/scan"}).
 		Stdout(ctx)
@@ -176,7 +176,7 @@ func (f *FernMycelium) Lint(
 ) (string, error) {
 	log.Println("🧼 Linting with golangci-lint...")
 	output, err := dag.Container().
-		From("golangci/golangci-lint:latest").
+		From("golangci/golangci-lint:v2.1.6").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
 		WithExec([]string{"golangci-lint", "run", "--timeout=3m"}).
@@ -244,7 +244,7 @@ func (m *FernMycelium) Pipeline(
 
 func (m *FernMycelium) SBOM(ctx context.Context, container *dagger.Container) (*dagger.File, error) {
 	syft := dag.Container().
-		From("anchore/syft:latest").
+		From("anchore/syft:v1.18.1").
 		WithMountedDirectory("/input", container.Rootfs()).
 		WithWorkdir("/input").
 		WithExec([]string{"syft", ".", "-o", "spdx-json", "-q", "--file", "/sbom.json"})
@@ -303,7 +303,7 @@ func (m *FernMycelium) Deploy(
 	}
 
 	// Load the image into k3d
-	imageRef := "fern-mycelium:latest"
+	imageRef := "fern-mycelium:dev"
 	_, err = container.Publish(ctx, imageRef)
 	if err != nil {
 		return "", fmt.Errorf("failed to publish image: %w", err)
@@ -311,7 +311,7 @@ func (m *FernMycelium) Deploy(
 
 	// Apply KubeVela component definitions and application
 	output, err := dag.Container().
-		From("oamdev/vela-cli:latest").
+		From("oamdev/vela-cli:v1.9.11").
 		WithMountedDirectory("/manifests", src.Directory("docs/kubevela")).
 		WithWorkdir("/manifests").
 		WithExec([]string{"kubectl", "create", "namespace", "fern", "--dry-run=client", "-o", "yaml"}).

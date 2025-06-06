@@ -24,7 +24,7 @@ spec:
     - name: fern-reporter
       type: webservice
       properties:
-        image: anoop2811/fern-reporter:latest
+        image: anoop2811/fern-reporter:v1.0.0
         ports:
           - port: 8080
             expose: true
@@ -58,7 +58,7 @@ spec:
     - name: fern-mycelium
       type: webservice
       properties:
-        image: anoop2811/fern-mycelium:latest
+        image: anoop2811/fern-mycelium:v1.0.0
         ports:
           - port: 8080
             expose: true
