@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:all
 	. "github.com/onsi/gomega"    //nolint:all
@@ -32,7 +33,8 @@ var _ = Describe("FlakyTests Query", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		resp, err := http.Post(serverURL(), "application/json", bytes.NewBuffer(reqBody))
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Post(serverURL(), "application/json", bytes.NewBuffer(reqBody))
 		Expect(err).ToNot(HaveOccurred())
 		defer resp.Body.Close() //nolint:all
 

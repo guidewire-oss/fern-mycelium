@@ -32,7 +32,7 @@ func (f *FernMycelium) Build(
 	log.Println("🔨 Building slim Alpine image with counterfeiter")
 
 	builder := dag.Container().
-		From("golang:1.24").
+		From("golang:1.24.3").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
 		WithExec([]string{"go", "mod", "tidy"}).
@@ -53,7 +53,7 @@ func (f *FernMycelium) Build(
 		WithExec([]string{"go", "build", "-o", "/app/fern-mycelium"})
 
 	runtime := dag.Container().
-		From("alpine:latest").
+		From("alpine:3.20").
 		WithExec([]string{"apk", "--no-cache", "add", "ca-certificates"}).
 		WithFile("/fern-mycelium", builder.File("/app/fern-mycelium")).
 		WithEntrypoint([]string{"/fern-mycelium"})
@@ -74,7 +74,7 @@ func (f *FernMycelium) Scan(
 	}
 
 	output, err := dag.Container().
-		From("aquasec/trivy:latest").
+		From("aquasec/trivy:0.58.1").
 		WithMountedDirectory("/scan", container.Rootfs()).
 		WithExec([]string{"trivy", "fs", "--exit-code", "1", "--severity", "CRITICAL,HIGH", "/scan"}).
 		Stdout(ctx)
@@ -134,7 +134,7 @@ func (f *FernMycelium) Test(
 ) (string, error) {
 	log.Println("✅ Running Ginkgo tests...")
 	output, err := dag.Container().
-		From("golang:1.24").
+		From("golang:1.24.3").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
 		WithExec([]string{"go", "install", "github.com/onsi/ginkgo/v2/ginkgo@latest"}).
@@ -154,7 +154,7 @@ func (f *FernMycelium) Acceptance(
 	log.Println("✅ Running Ginkgo tests...")
 
 	output, err := dag.Container().
-		From("golang:1.24").
+		From("golang:1.24.3").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
 		WithServiceBinding("docker", dag.Docker().Cli().Engine()).
@@ -176,7 +176,7 @@ func (f *FernMycelium) Lint(
 ) (string, error) {
 	log.Println("🧼 Linting with golangci-lint...")
 	output, err := dag.Container().
-		From("golangci/golangci-lint:latest").
+		From("golangci/golangci-lint:v2.1.6").
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
 		WithExec([]string{"golangci-lint", "run", "--timeout=3m"}).
@@ -198,7 +198,7 @@ func (f *FernMycelium) CheckOpenSSF(
 	log.Println("🛡 Running OpenSSF Scorecard with GitHub token...")
 
 	output, err := dag.Container().
-		From("golang:1.24").
+		From("golang:1.24.3").
 		WithSecretVariable("GITHUB_AUTH_TOKEN", githubToken).
 		WithExec([]string{"go", "install", "github.com/ossf/scorecard/v4@latest"}).
 		WithExec([]string{"scorecard", fmt.Sprintf("--repo=%s", repo)}).
@@ -244,7 +244,7 @@ func (m *FernMycelium) Pipeline(
 
 func (m *FernMycelium) SBOM(ctx context.Context, container *dagger.Container) (*dagger.File, error) {
 	syft := dag.Container().
-		From("anchore/syft:latest").
+		From("anchore/syft:v1.18.1").
 		WithMountedDirectory("/input", container.Rootfs()).
 		WithWorkdir("/input").
 		WithExec([]string{"syft", ".", "-o", "spdx-json", "-q", "--file", "/sbom.json"})
@@ -286,4 +286,87 @@ func (m *FernMycelium) Release(ctx context.Context, src *dagger.Directory, versi
 	// Optionally export SBOM file to local or GitHub release asset
 	_, err = sbomFile.Export(ctx, "fern-mycelium-sbom.json")
 	return err
+}
+
+// Deploy deploys the application to k3d cluster using KubeVela
+func (m *FernMycelium) Deploy(
+	ctx context.Context,
+	// +defaultPath="."
+	src *dagger.Directory,
+) (string, error) {
+	log.Println("🚀 Deploying to k3d cluster using KubeVela...")
+
+	// Build the container first
+	container, err := m.Build(ctx, src)
+	if err != nil {
+		return "", fmt.Errorf("failed to build container: %w", err)
+	}
+
+	// Load the image into k3d
+	imageRef := "fern-mycelium:dev"
+	_, err = container.Publish(ctx, imageRef)
+	if err != nil {
+		return "", fmt.Errorf("failed to publish image: %w", err)
+	}
+
+	// Apply KubeVela component definitions and application
+	output, err := dag.Container().
+		From("oamdev/vela-cli:v1.9.11").
+		WithMountedDirectory("/manifests", src.Directory("docs/kubevela")).
+		WithWorkdir("/manifests").
+		WithExec([]string{"kubectl", "create", "namespace", "fern", "--dry-run=client", "-o", "yaml"}).
+		WithExec([]string{"kubectl", "apply", "-f", "-"}).
+		WithExec([]string{"vela", "def", "apply", "cnpg.cue"}).
+		WithExec([]string{"vela", "def", "apply", "gateway.cue"}).
+		WithExec([]string{"kubectl", "apply", "-f", "vela.yaml"}).
+		Stdout(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to apply KubeVela manifests: %w", err)
+	}
+
+	return fmt.Sprintf("✅ Deployed successfully using KubeVela:\n%s", output), nil
+}
+
+// A coding agent for developing new features
+func (m *FernMycelium) Develop(
+	ctx context.Context,
+	// Assignment to complete
+	assignment string,
+	// +defaultPath="/"
+	source *dagger.Directory,
+) (*dagger.Directory, error) {
+	// Environment with agent inputs and outputs
+	environment := dag.Env(dagger.EnvOpts{Privileged: true}).
+		WithStringInput("assignment", assignment, "the assignment to complete").
+		WithWorkspaceInput(
+			"workspace",
+			dag.Workspace(source),
+			"the workspace with tools to edit code").
+		WithWorkspaceOutput(
+			"completed",
+			"the workspace with the completed assignment")
+
+	// Detailed prompt stored in markdown file
+	promptFile := dag.CurrentModule().Source().File("develop_prompt.md")
+
+	// Put it all together to form the agent
+	work := dag.LLM().
+		WithEnv(environment).
+		WithPromptFile(promptFile)
+
+	// Get the output from the agent
+	completed := work.
+		Env().
+		Output("completed").
+		AsWorkspace()
+	completedDirectory := completed.GetSource().WithoutDirectory("node_modules")
+
+	// Make sure the tests really pass
+	_, err := m.Test(ctx, completedDirectory)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return the Directory with the assignment completed
+	return completedDirectory, nil
 }

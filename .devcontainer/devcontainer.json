@@ -1,0 +1,30 @@
+{
+  "name": "Fern Mycelium Dev (Go 1.24, Nvim/LazyVim + Postgres)",
+  "build": { "dockerfile": "Dockerfile" },
+
+  // Mount your code at /workspace
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+
+  // Expose HTTP + Postgres ports
+  "forwardPorts": [8080, 5432],
+
+  // Mount your host Neovim config
+  "remoteUser": "vscode",
+  "mounts": [
+    "source=${env:HOME}/.config/nvim,target=/home/vscode/.config/nvim,type=bind,consistency=cached",
+    "source=${env:HOME}/.local/share/nvim,target=/home/vscode/.local/share/nvim,type=bind,consistency=cached"
+  ],
+
+  // App environment
+  "remoteEnv": {
+    "FERN_REPORTER_DB_DSN": "postgres://fern:fern@localhost:5432/fern?sslmode=disable",
+    "PORT": "8080"
+  },
+
+  // After build: fetch Go modules & install LazyVim plugins
+  "postCreateCommand": "go mod download && nvim --headless +Lazy! +qa",
+
+  // On each start: run the init script which starts Postgres, migrates, and launches server
+  "postStartCommand": "bash /usr/local/bin/init-postgres.sh"
+}

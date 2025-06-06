@@ -1,0 +1,127 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: fern-ecosystem
+  namespace: fern
+spec:
+  components:
+    - name: postgres
+      type: cnpg
+      properties:
+        name: postgres
+        instances: 1
+        storageSize: "1Gi"
+        initDatabase: "fern"
+        enableSuperuser: false
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+
+    - name: fern-reporter
+      type: webservice
+      properties:
+        image: anoop2811/fern-reporter:v1.0.0
+        ports:
+          - port: 8080
+            expose: true
+        cpu: "0.5"
+      traits:
+        - type: service-binding
+          properties:
+            envMappings:
+              FERN_USERNAME:
+                secret: postgres-app
+                key: username
+              FERN_PASSWORD:
+                secret: postgres-app
+                key: password
+              FERN_HOST:
+                secret: postgres-app
+                key: host
+              FERN_PORT:
+                secret: postgres-app
+                key: port
+              FERN_DATABASE:
+                secret: postgres-app
+                key: dbname
+        - type: gateway
+          properties:
+            domain: fern-reporter.local
+            http:
+              "/": 8080
+            class: traefik
+
+    - name: fern-mycelium
+      type: webservice
+      properties:
+        image: anoop2811/fern-mycelium:v1.0.0
+        ports:
+          - port: 8080
+            expose: true
+        cpu: "0.5"
+        cmd: ["/fern-mycelium", "serve"]
+      traits:
+        - type: service-binding
+          properties:
+            envMappings:
+              DB_URL:
+                secret: postgres-app
+                key: uri
+              FERN_USERNAME:
+                secret: postgres-app
+                key: username
+              FERN_PASSWORD:
+                secret: postgres-app
+                key: password
+              FERN_HOST:
+                secret: postgres-app
+                key: host
+              FERN_PORT:
+                secret: postgres-app
+                key: port
+              FERN_DATABASE:
+                secret: postgres-app
+                key: dbname
+        - type: gateway
+          properties:
+            domain: fern-mycelium.local
+            http:
+              "/": 8080
+            class: traefik
+
+  workflow:
+    steps:
+      - name: deploy-database
+        type: apply-component
+        properties:
+          component: postgres
+
+      - name: wait-database
+        type: suspend
+        properties:
+          duration: "30s"
+
+      - name: deploy-reporter
+        type: apply-component
+        properties:
+          component: fern-reporter
+
+      - name: wait-reporter
+        type: suspend
+        properties:
+          duration: "15s"
+
+      - name: deploy-mycelium
+        type: apply-component
+        properties:
+          component: fern-mycelium
+
+  policies:
+    - name: debug
+      type: debug
+      properties:
+        enable: true

@@ -31,13 +31,13 @@ func (r *FlakyTestRepo) GetFlakyTests(ctx context.Context, projectID string, lim
     SELECT
         spec_runs.spec_description AS test_name,
         COUNT(*) AS total_runs,
-        COUNT(*) FILTER (WHERE spec_runs.status != 'passed') AS failure_count,
-        MAX(spec_runs.end_time) FILTER (WHERE spec_runs.status != 'passed') AS last_failure
+        COUNT(*) FILTER (WHERE spec_runs.status <> 'passed') AS failure_count,
+        MAX(spec_runs.end_time) FILTER (WHERE spec_runs.status <> 'passed') AS last_failure
     FROM spec_runs
     JOIN suite_runs ON spec_runs.suite_id = suite_runs.id
     WHERE suite_runs.suite_name = $1
     GROUP BY spec_runs.spec_description
-    ORDER BY (COUNT(*) FILTER (WHERE spec_runs.status != 'passed'))::float / COUNT(*) DESC
+    ORDER BY (COUNT(*) FILTER (WHERE spec_runs.status <> 'passed'))::float / COUNT(*) DESC
     LIMIT $2;
 	`
 	rows, err := r.db.Query(ctx, query, projectID, limit)
@@ -51,19 +51,26 @@ func (r *FlakyTestRepo) GetFlakyTests(ctx context.Context, projectID string, lim
 	for rows.Next() {
 		var testName string
 		var runCount, failureCount int
-		var lastFailure time.Time
+		var lastFailure *time.Time
 
 		if err := rows.Scan(&testName, &runCount, &failureCount, &lastFailure); err != nil {
 			return nil, err
 		}
 
-		results = append(results, &gql.FlakyTest{
+		test := &gql.FlakyTest{
+			TestID:      testName, // Use test name as ID for now
 			TestName:    testName,
 			PassRate:    float64(runCount-failureCount) / float64(runCount),
 			FailureRate: float64(failureCount) / float64(runCount),
-			LastFailure: lastFailure.Format(time.RFC3339),
 			RunCount:    runCount,
-		})
+		}
+
+		if lastFailure != nil {
+			formattedTime := lastFailure.Format(time.RFC3339)
+			test.LastFailure = &formattedTime
+		}
+
+		results = append(results, test)
 	}
 
 	return results, nil

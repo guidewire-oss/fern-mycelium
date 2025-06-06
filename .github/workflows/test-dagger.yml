@@ -1,0 +1,31 @@
+name: Test Dagger Installation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-dagger:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+
+    - name: Install Dagger
+      run: |
+        curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh
+        dagger version
+
+    - name: Clean old Dagger engines
+      run: |
+        docker ps -a --filter "name=dagger-engine" --format "{{.Names}}" | xargs -r docker rm -f || true
+        docker images --filter "reference=registry.dagger.io/engine" --format "{{.Repository}}:{{.Tag}}" | xargs -r docker rmi -f || true
+        
+    - name: Test Dagger Functions
+      run: |
+        dagger functions

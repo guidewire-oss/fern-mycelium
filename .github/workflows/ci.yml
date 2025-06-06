@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DAGGER_VERSION: "0.18.9"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22.x'
+
+    - name: Install Dagger
+      run: |
+        curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh
+        dagger version
+
+    - name: Clean old Dagger engines
+      run: |
+        # Stop and remove any existing Dagger engine containers
+        docker ps -a --filter "name=dagger-engine" --format "{{.Names}}" | xargs -r docker rm -f || true
+        # Remove any old engine images to force fresh pull
+        docker images --filter "reference=registry.dagger.io/engine" --format "{{.Repository}}:{{.Tag}}" | xargs -r docker rmi -f || true
+
+    - name: Run Dagger pipeline
+      run: |
+        dagger call pipeline --src .
+
+  security:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+
+    - name: Install Dagger
+      run: |
+        curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh
+
+    - name: Clean old Dagger engines
+      run: |
+        docker ps -a --filter "name=dagger-engine" --format "{{.Names}}" | xargs -r docker rm -f || true
+        docker images --filter "reference=registry.dagger.io/engine" --format "{{.Repository}}:{{.Tag}}" | xargs -r docker rmi -f || true
+
+    - name: Run security scan
+      run: |
+        dagger call scan --src .
+
+    - name: Run OpenSSF Scorecard
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        dagger call check-open-ssf --repo "guidewire-oss/fern-mycelium" --github-token env:GITHUB_TOKEN
+
+  build-and-publish:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, security]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+
+    - name: Install Dagger
+      run: |
+        curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh
+
+    - name: Clean old Dagger engines
+      run: |
+        docker ps -a --filter "name=dagger-engine" --format "{{.Names}}" | xargs -r docker rm -f || true
+        docker images --filter "reference=registry.dagger.io/engine" --format "{{.Repository}}:{{.Tag}}" | xargs -r docker rmi -f || true
+
+    - name: Build and publish
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Extract version from git tag or commit
+        VERSION=${GITHUB_REF_NAME:-${GITHUB_SHA::7}}
+        dagger call publish --src . --version $VERSION --github-token env:GITHUB_TOKEN
