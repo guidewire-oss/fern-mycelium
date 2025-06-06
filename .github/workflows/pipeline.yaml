@@ -30,6 +30,13 @@ jobs:
       - name: Debug - Pipeline completed
         run: echo "✅ Pipeline tests completed successfully"
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: coverage.out
+          fail_ci_if_error: false
+
       - name: Debug - Starting security checks
         run: echo "🔒 Running security scans..."
 
