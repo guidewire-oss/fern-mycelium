@@ -1,5 +1,12 @@
 # fern-mycelium
 
+[![CI](https://github.com/guidewire-oss/fern-mycelium/workflows/Fern%20Mycelium%20CI%20Pipeline/badge.svg)](https://github.com/guidewire-oss/fern-mycelium/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/guidewire-oss/fern-mycelium)](https://goreportcard.com/report/github.com/guidewire-oss/fern-mycelium)
+[![codecov](https://codecov.io/gh/guidewire-oss/fern-mycelium/branch/main/graph/badge.svg)](https://codecov.io/gh/guidewire-oss/fern-mycelium)
+[![License](https://img.shields.io/github/license/guidewire-oss/fern-mycelium.svg)](LICENSE)
+[![Release](https://img.shields.io/github/release/guidewire-oss/fern-mycelium.svg)](https://github.com/guidewire-oss/fern-mycelium/releases)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/guidewire-oss/fern-mycelium/badge)](https://securityscorecards.dev/viewer/?uri=github.com/guidewire-oss/fern-mycelium)
+
 **The intelligent context layer beneath your test ecosystem.**
 
 fern-mycelium is an open-source, extensible context engine that augments your test reporting system with rich insights, test intelligence, and AI agent integration via the **Model Context Protocol (MCP)**.
