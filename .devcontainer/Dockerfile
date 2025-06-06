@@ -29,4 +29,4 @@ USER vscode
 WORKDIR /workspace
 
 # Copy init/start script (must be executable on host)
-COPY init-postgres.sh /usr/local/bin/init-po
+COPY init-postgres.sh /usr/local/bin/init-postgres.sh
