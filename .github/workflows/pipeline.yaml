@@ -17,12 +17,21 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Debug - Pipeline start
+        run: echo "🧪 Starting Dagger pipeline..."
+
       - name: Run full pipeline
         uses: dagger/dagger-for-github@8.0.0
         with:
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
           version: "0.18.2"
           call: pipeline --src .
+
+      - name: Debug - Pipeline completed
+        run: echo "✅ Pipeline tests completed successfully"
+
+      - name: Debug - Starting security checks
+        run: echo "🔒 Running security scans..."
 
       - name: Run OpenSSF Scorecard check
         env:
@@ -31,6 +40,10 @@ jobs:
         with:
           version: "0.18.2"
           call: check-open-ssf --repo=github.com/guidewire-oss/fern-mycelium --githubToken=env://GITHUB_TOKEN
+
+      - name: Debug - Security checks completed
+        run: echo "✅ Security checks completed successfully"
+
       - name: Compute VERSION
         id: vars
         run: |
@@ -40,6 +53,12 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Debug - Publishing start
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "🚀 Starting publish step..."
+          echo "📦 Version: ${{ steps.vars.outputs.VERSION }}"
+
       - name: Publish (optional, only on main)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for authenticated API access
@@ -48,6 +67,11 @@ jobs:
         with:
           version: "0.18.2"
           call: publish --src . --version=${{ steps.vars.outputs.VERSION }} --github-token=env://GITHUB_TOKEN
+
+      - name: Debug - Publish completed
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+        run: echo "✅ Publish completed successfully"
+
   release:
     name: Release to GHCR + Cosign + SBOM
     runs-on: ubuntu-latest
@@ -64,6 +88,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Debug - Release start
+        run: |
+          echo "🎉 Starting secure release..."
+          echo "🏷️ Tag: ${{ github.ref_name }}"
+
       - name: Run secure release
         uses: dagger/dagger-for-github@8.0.0
         with:
@@ -73,3 +102,6 @@ jobs:
             --src .
             --version ${{ github.ref_name }}
             --githubToken env://GITHUB_TOKEN
+
+      - name: Debug - Release completed
+        run: echo "✅ Secure release completed successfully"
